@@ -1,1 +1,157 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
 
+class List {
+public:
+    std::string title;
+    double price;
+    int copies;
+
+    List(std::string t, double p, int c) : title(t), price(p), copies(c) {}
+
+    void displayInfo() const {
+        std::cout << "List"<<title << " |" << price << " |" << copies << std::endl;
+    }
+};
+
+class Menu {
+private:
+    std::vector<List> inventory;
+
+public:
+    void loadInventory(const std::string& filename) {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file: " << filename << std::endl;
+            return;
+        }
+
+        std::string line;
+        while (std::getline(file, line)) {
+            std::string type, title;
+            double price;
+            int copies;
+            char delimiter;
+
+            std::istringstream iss(line);
+            iss >> type >> delimiter >> title >> delimiter >> price >> delimiter >> copies;
+
+            if (type == "List") {
+                inventory.emplace_back(title, price, copies);
+            }
+        }
+
+        file.close();
+    }
+
+    void displayInventory() const {
+        for (const List& movie : inventory) {
+            movie.displayInfo();
+        }
+    }
+
+    void inquireMovie(const std::string& title) const {
+        auto it = std::find_if(inventory.begin(), inventory.end(),
+                               [title](const List& movie) { return movie.title == title; });
+
+        if (it != inventory.end()) {
+            it->displayInfo();
+        } else {
+            std::cout << "Movie not found in the inventory." << std::endl;
+        }
+    }
+
+    void returnMovie(const std::string& title) {
+        auto it = std::find_if(inventory.begin(), inventory.end(),
+                               [title](const List& movie) { return movie.title == title; });
+
+        if (it != inventory.end()) {
+            it->copies++;
+            std::cout << "Returned '" << title << "' to the inventory. Now " << it->copies << " copies available." << std::endl;
+        } else {
+            std::cout << "Movie not found in the inventory." << std::endl;
+        }
+    }
+
+    void checkOutMovie(const std::string& title) {
+        auto it = std::find_if(inventory.begin(), inventory.end(),
+                               [title](const List& movie) { return movie.title == title; });
+
+        if (it != inventory.end()) {
+            if (it->copies > 0) {
+                it->copies--;
+                std::cout << "Checked out '" << title << "'. " << it->copies << " copies remaining." << std::endl;
+            } else {
+                std::cout << "Sorry, '" << title << "' is out of stock." << std::endl;
+            }
+        } else {
+            std::cout << "Movie not found in the inventory." << std::endl;
+        }
+    }
+
+    void updateInventoryFile(const std::string& filename) {
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file: " << filename << std::endl;
+            return;
+        }
+
+        for (const List& movie : inventory) {
+            file << "Movie|" << movie.title << "|" << movie.price << "|" << movie.copies << "\n";
+        }
+
+        file.close();
+    }
+};
+
+int main() {
+    Menu menu;
+    menu.loadInventory("inventory.txt");
+
+    while (true) {
+        std::cout << "\nCommands:\nI - Inquire | R - Return | L - List | C - Check Out | Q - Quit" << std::endl;
+        char choice;
+        std::cout << "Enter a command: ";
+        std::cin >> choice;
+
+        switch (choice) {
+            case 'I': {
+                std::string title;
+                std::cout << "Enter the movie title: ";
+                std::cin.ignore();
+                std::getline(std::cin, title);
+                menu.inquireMovie(title);
+                break;
+            }
+            case 'R': {
+                std::string title;
+                std::cout << "Enter the movie title to return: ";
+                std::cin.ignore();
+                std::getline(std::cin, title);
+                menu.returnMovie(title);
+                break;
+            }
+            case 'L':
+                menu.displayInventory();
+                break;
+            case 'C': {
+                std::string title;
+                std::cout << "Enter the movie title to check out: ";
+                std::cin.ignore();
+                std::getline(std::cin, title);
+                menu.checkOutMovie(title);
+                break;
+            }
+            case 'Q':
+                menu.updateInventoryFile("inventory.txt");
+                std::cout << "Program terminated. Inventory file updated." << std::endl;
+                return 0;
+            default:
+                std::cout << "Invalid command. Please try again." << std::endl;
+        }
+    }
+
+    return 0;
+}
